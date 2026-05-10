@@ -41,7 +41,33 @@ uv run codex-llamacpp-proxy
 uv run codex-llamacpp-proxy --llama-base-url http://127.0.0.1:8080/v1
 ```
 
-Codex の `~/.codex/config.toml` では、llama.cpp 直ではなくプロキシを `base_url` に指定します。
+デバッグログを出したい場合:
+
+```bash
+PROXY_DEBUG=1 uv run codex-llamacpp-proxy
+```
+
+停止させるときは単に Ctrl-C などで kill してください。
+
+## Codex の `~/.codex/config.toml`
+
+profiles.local-llama を使用し、かつ、Codex デスクトップアプリ利用時は、以下をアンコメントします。OpenAI クラウドAPIに戻すときは再びコメントアウトします。Codex CLI 利用時はアンコメントもコメントアウトも不要です。
+
+```toml
+# profile="local-llama"
+```
+
+profile は例として以下のように組みます。
+
+```toml
+[profiles.local-llama]
+model_provider = "llamacpp-local"
+model = "qwen3.6-35b-a3b"
+model_context_window = 262144
+model_auto_compact_token_limit = 240000
+```
+
+model_provider は llama.cpp 直ではなくプロキシを `base_url` に指定します。
 
 ```toml
 [model_providers.llamacpp-local]
@@ -51,11 +77,15 @@ wire_api = "responses"
 requires_openai_auth = false
 ```
 
-デバッグログを出したい場合:
+Codex CLI アプリは profile 指定で起動します。
 
 ```bash
-PROXY_DEBUG=1 uv run codex-llamacpp-proxy
+codex --profile local-llama
 ```
+
+Codex デスクトップアプリは、ターミナル/ショートカット/ランチャーアプリ、どこから起動しても構いません。
+
+正しく構成できている場合は、いつもは `5.5` などと表示されている箇所が、 `model_providers.llamacpp-local.name` に指定した文字列に置き換わっているはずです。(上記設定例のままなら `llama.cpp via local responses proxy` と出る)
 
 ## 現状の制限
 
