@@ -3,7 +3,7 @@
 Tiny Responses API -> llama.cpp Chat Completions proxy.
 
 Run:
-    uv run proxy.py
+    uv run codex-llamacpp-proxy
 
 Then point Codex at:
     base_url = "http://127.0.0.1:8090/v1"
@@ -35,7 +35,9 @@ from urllib.request import Request, urlopen
 
 HOST = os.environ.get("PROXY_HOST", "127.0.0.1")
 PORT = int(os.environ.get("PROXY_PORT", "8090"))
-LLAMA_BASE_URL = os.environ.get("LLAMA_CPP_BASE_URL", "http://127.0.0.1:8080/v1").rstrip("/")
+LLAMA_BASE_URL = os.environ.get(
+    "LLAMA_CPP_BASE_URL", "http://127.0.0.1:8080/v1"
+).rstrip("/")
 FALLBACK_MODEL = os.environ.get("LLAMA_CPP_MODEL")
 DEBUG = os.environ.get("PROXY_DEBUG") == "1"
 
@@ -151,7 +153,9 @@ def input_item_to_message(item: Any) -> dict[str, Any] | None:
         role = normalize_role(item.get("role"))
         content = item.get("content", "")
         if isinstance(content, list):
-            content = "\n".join(filter(None, (text_from_content_part(part) for part in content)))
+            content = "\n".join(
+                filter(None, (text_from_content_part(part) for part in content))
+            )
         elif not isinstance(content, str):
             content = text_from_content_part(content)
         message: dict[str, Any] = {"role": role, "content": content}
@@ -211,7 +215,9 @@ def strip_assistant_prefill(messages: list[dict[str, Any]]) -> list[dict[str, An
     stripped = list(messages)
     while len(stripped) > 1 and stripped[-1].get("role") == "assistant":
         removed = stripped.pop()
-        debug(f"dropping trailing assistant prefill: {str(removed.get('content') or '')[:120]!r}")
+        debug(
+            f"dropping trailing assistant prefill: {str(removed.get('content') or '')[:120]!r}"
+        )
 
     if stripped and stripped[-1].get("role") == "assistant":
         content = str(stripped[-1].get("content") or "")
@@ -304,7 +310,9 @@ def default_parameters_for_responses_tool(tool_type: str) -> dict[str, Any]:
 def wrap_responses_tool_as_function(tool: dict[str, Any]) -> dict[str, Any] | None:
     tool_type = str(tool.get("type") or "tool")
     name = sanitize_function_name(tool.get("name") or tool_type)
-    parameters = tool.get("parameters") or tool.get("input_schema") or tool.get("schema")
+    parameters = (
+        tool.get("parameters") or tool.get("input_schema") or tool.get("schema")
+    )
     if not isinstance(parameters, dict):
         parameters = default_parameters_for_responses_tool(tool_type)
 
@@ -329,7 +337,9 @@ def wrap_responses_tool_as_function(tool: dict[str, Any]) -> dict[str, Any] | No
 def convert_tools(tools: Any) -> list[dict[str, Any]]:
     if not isinstance(tools, list):
         return []
-    converted = [converted for tool in tools if (converted := convert_tool(tool)) is not None]
+    converted = [
+        converted for tool in tools if (converted := convert_tool(tool)) is not None
+    ]
     debug(f"tools: received={len(tools)} forwarded={len(converted)}")
     return converted
 
@@ -393,7 +403,9 @@ def chat_message_to_output_text(message: dict[str, Any]) -> str:
     if isinstance(content, str):
         return content
     if isinstance(content, list):
-        return "\n".join(filter(None, (text_from_content_part(part) for part in content)))
+        return "\n".join(
+            filter(None, (text_from_content_part(part) for part in content))
+        )
     return "" if content is None else str(content)
 
 
@@ -414,7 +426,11 @@ def chat_tool_calls_to_response_items(message: dict[str, Any]) -> list[dict[str,
     for tool_call in tool_calls:
         if not isinstance(tool_call, dict):
             continue
-        function = tool_call.get("function") if isinstance(tool_call.get("function"), dict) else {}
+        function = (
+            tool_call.get("function")
+            if isinstance(tool_call.get("function"), dict)
+            else {}
+        )
         name = function.get("name") or tool_call.get("name")
         if not name:
             continue
@@ -424,7 +440,9 @@ def chat_tool_calls_to_response_items(message: dict[str, Any]) -> list[dict[str,
                 "type": "function_call",
                 "call_id": str(tool_call.get("id") or call_id()),
                 "name": str(name),
-                "arguments": normalize_tool_arguments(function.get("arguments") or tool_call.get("arguments")),
+                "arguments": normalize_tool_arguments(
+                    function.get("arguments") or tool_call.get("arguments")
+                ),
             }
         )
     return items
@@ -435,7 +453,9 @@ def responses_usage_from_chat_usage(usage: Any) -> dict[str, Any]:
         usage = {}
 
     input_tokens = int(usage.get("input_tokens") or usage.get("prompt_tokens") or 0)
-    output_tokens = int(usage.get("output_tokens") or usage.get("completion_tokens") or 0)
+    output_tokens = int(
+        usage.get("output_tokens") or usage.get("completion_tokens") or 0
+    )
     total_tokens = int(usage.get("total_tokens") or (input_tokens + output_tokens))
 
     input_details = usage.get("input_tokens_details")
@@ -448,7 +468,11 @@ def responses_usage_from_chat_usage(usage: Any) -> dict[str, Any]:
     return {
         "input_tokens": input_tokens,
         "input_tokens_details": {
-            "cached_tokens": int(input_details.get("cached_tokens") or usage.get("prompt_tokens_cached") or 0),
+            "cached_tokens": int(
+                input_details.get("cached_tokens")
+                or usage.get("prompt_tokens_cached")
+                or 0
+            ),
         },
         "output_tokens": output_tokens,
         "output_tokens_details": {
@@ -458,7 +482,9 @@ def responses_usage_from_chat_usage(usage: Any) -> dict[str, Any]:
     }
 
 
-def responses_payload_from_chat(chat_payload: dict[str, Any], model: str, rid: str | None = None) -> dict[str, Any]:
+def responses_payload_from_chat(
+    chat_payload: dict[str, Any], model: str, rid: str | None = None
+) -> dict[str, Any]:
     rid = rid or response_id()
     choice = (chat_payload.get("choices") or [{}])[0]
     message = choice.get("message") or {}
@@ -499,7 +525,9 @@ def responses_payload_from_chat(chat_payload: dict[str, Any], model: str, rid: s
     }
 
 
-def stream_response_object(handler: BaseHTTPRequestHandler, response: dict[str, Any]) -> None:
+def stream_response_object(
+    handler: BaseHTTPRequestHandler, response: dict[str, Any]
+) -> None:
     handler.send_response(200)
     handler.send_header("content-type", "text/event-stream")
     handler.send_header("cache-control", "no-cache")
@@ -510,7 +538,9 @@ def stream_response_object(handler: BaseHTTPRequestHandler, response: dict[str, 
     started = dict(response)
     started["status"] = "in_progress"
     started["output"] = []
-    handler.wfile.write(sse_frame("response.created", {"type": "response.created", "response": started}))
+    handler.wfile.write(
+        sse_frame("response.created", {"type": "response.created", "response": started})
+    )
 
     for index, item in enumerate(response.get("output") or []):
         added = dict(item)
@@ -518,12 +548,23 @@ def stream_response_object(handler: BaseHTTPRequestHandler, response: dict[str, 
             added["status"] = "in_progress"
             added["content"] = []
         handler.wfile.write(
-            sse_frame("response.output_item.added", {"type": "response.output_item.added", "output_index": index, "item": added})
+            sse_frame(
+                "response.output_item.added",
+                {
+                    "type": "response.output_item.added",
+                    "output_index": index,
+                    "item": added,
+                },
+            )
         )
 
         if item.get("type") == "message":
             content = item.get("content") or []
-            part = content[0] if content else {"type": "output_text", "text": "", "annotations": []}
+            part = (
+                content[0]
+                if content
+                else {"type": "output_text", "text": "", "annotations": []}
+            )
             text = str(part.get("text") or "")
             handler.wfile.write(
                 sse_frame(
@@ -576,10 +617,21 @@ def stream_response_object(handler: BaseHTTPRequestHandler, response: dict[str, 
             )
 
         handler.wfile.write(
-            sse_frame("response.output_item.done", {"type": "response.output_item.done", "output_index": index, "item": item})
+            sse_frame(
+                "response.output_item.done",
+                {
+                    "type": "response.output_item.done",
+                    "output_index": index,
+                    "item": item,
+                },
+            )
         )
 
-    handler.wfile.write(sse_frame("response.completed", {"type": "response.completed", "response": response}))
+    handler.wfile.write(
+        sse_frame(
+            "response.completed", {"type": "response.completed", "response": response}
+        )
+    )
     handler.wfile.write(sse_done())
     handler.wfile.flush()
 
@@ -589,17 +641,26 @@ def llama_request(path: str, payload: dict[str, Any], stream: bool) -> Any:
     req = Request(
         LLAMA_BASE_URL + path,
         data=body,
-        headers={"content-type": "application/json", "accept": "text/event-stream" if stream else "application/json"},
+        headers={
+            "content-type": "application/json",
+            "accept": "text/event-stream" if stream else "application/json",
+        },
         method="POST",
     )
     return urlopen(req, timeout=None)
 
 
 def llama_get(path: str) -> tuple[int, bytes, str]:
-    req = Request(LLAMA_BASE_URL + path, headers={"accept": "application/json"}, method="GET")
+    req = Request(
+        LLAMA_BASE_URL + path, headers={"accept": "application/json"}, method="GET"
+    )
     try:
         with urlopen(req, timeout=30) as resp:
-            return resp.status, resp.read(), resp.headers.get("content-type", "application/json")
+            return (
+                resp.status,
+                resp.read(),
+                resp.headers.get("content-type", "application/json"),
+            )
     except HTTPError as exc:
         return exc.code, exc.read(), exc.headers.get("content-type", "application/json")
 
@@ -610,7 +671,9 @@ def parse_sse_data(line: bytes) -> str | None:
     return line[5:].strip().decode("utf-8", errors="replace")
 
 
-def stream_chat_as_responses(handler: BaseHTTPRequestHandler, upstream: Any, model: str) -> None:
+def stream_chat_as_responses(
+    handler: BaseHTTPRequestHandler, upstream: Any, model: str
+) -> None:
     rid = response_id()
     oid = output_id()
     created = now_unix()
@@ -644,7 +707,10 @@ def stream_chat_as_responses(handler: BaseHTTPRequestHandler, upstream: Any, mod
     }
 
     write("response.created", {"type": "response.created", "response": response_base})
-    write("response.output_item.added", {"type": "response.output_item.added", "output_index": 0, "item": output_item})
+    write(
+        "response.output_item.added",
+        {"type": "response.output_item.added", "output_index": 0, "item": output_item},
+    )
     write(
         "response.content_part.added",
         {
@@ -713,14 +779,24 @@ def stream_chat_as_responses(handler: BaseHTTPRequestHandler, upstream: Any, mod
         "role": "assistant",
         "content": [{"type": "output_text", "text": text, "annotations": []}],
     }
-    write("response.output_item.done", {"type": "response.output_item.done", "output_index": 0, "item": completed_item})
+    write(
+        "response.output_item.done",
+        {
+            "type": "response.output_item.done",
+            "output_index": 0,
+            "item": completed_item,
+        },
+    )
     completed_response = {
         **response_base,
         "status": "completed",
         "output": [completed_item],
         "usage": responses_usage_from_chat_usage(None),
     }
-    write("response.completed", {"type": "response.completed", "response": completed_response})
+    write(
+        "response.completed",
+        {"type": "response.completed", "response": completed_response},
+    )
     handler.wfile.write(sse_done())
     handler.wfile.flush()
 
@@ -753,7 +829,10 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 upstream = llama_request("/chat/completions", payload, stream)
                 if stream:
                     self.send_response(upstream.status)
-                    self.send_header("content-type", upstream.headers.get("content-type", "text/event-stream"))
+                    self.send_header(
+                        "content-type",
+                        upstream.headers.get("content-type", "text/event-stream"),
+                    )
                     self.end_headers()
                     for chunk in upstream:
                         self.wfile.write(chunk)
@@ -761,7 +840,10 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 else:
                     body = upstream.read()
                     self.send_response(upstream.status)
-                    self.send_header("content-type", upstream.headers.get("content-type", "application/json"))
+                    self.send_header(
+                        "content-type",
+                        upstream.headers.get("content-type", "application/json"),
+                    )
                     self.send_header("content-length", str(len(body)))
                     self.end_headers()
                     self.wfile.write(body)
@@ -782,7 +864,9 @@ class ProxyHandler(BaseHTTPRequestHandler):
             upstream = llama_request("/chat/completions", chat_payload, False)
             chat_body = upstream.read()
             chat_json = json.loads(chat_body.decode("utf-8"))
-            responses_json = responses_payload_from_chat(chat_json, chat_payload["model"])
+            responses_json = responses_payload_from_chat(
+                chat_json, chat_payload["model"]
+            )
             if client_wants_stream:
                 stream_response_object(self, responses_json)
                 return
@@ -792,12 +876,16 @@ class ProxyHandler(BaseHTTPRequestHandler):
         except HTTPError as exc:
             body = exc.read()
             self.send_response(exc.code)
-            self.send_header("content-type", exc.headers.get("content-type", "application/json"))
+            self.send_header(
+                "content-type", exc.headers.get("content-type", "application/json")
+            )
             self.send_header("content-length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
         except (URLError, ConnectionError) as exc:
-            send_error(self, 502, f"failed to reach llama.cpp at {LLAMA_BASE_URL}: {exc}")
+            send_error(
+                self, 502, f"failed to reach llama.cpp at {LLAMA_BASE_URL}: {exc}"
+            )
         except Exception as exc:
             if DEBUG:
                 traceback.print_exc()
@@ -807,7 +895,9 @@ class ProxyHandler(BaseHTTPRequestHandler):
 def main() -> int:
     global DEBUG, LLAMA_BASE_URL
 
-    parser = argparse.ArgumentParser(description="Responses API -> llama.cpp Chat Completions proxy")
+    parser = argparse.ArgumentParser(
+        description="Responses API -> llama.cpp Chat Completions proxy"
+    )
     parser.add_argument("--host", default=HOST)
     parser.add_argument("--port", default=PORT, type=int)
     parser.add_argument("--llama-base-url", default=LLAMA_BASE_URL)

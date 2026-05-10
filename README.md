@@ -18,7 +18,7 @@ Windows 11 の Codex Desktop で `~/.codex/config.toml` の `profiles.local-llam
 
 ## 目的
 
-`proxy.py` はこの差を吸収するために作成した薄い変換プロキシです。
+`src/codex_llamacpp_proxy/proxy.py` はこの差を吸収するために作成した薄い変換プロキシです。
 
 - Codex Desktop から `/v1/responses` として受ける
 - llama.cpp の `/v1/chat/completions` に変換して転送する
@@ -32,13 +32,13 @@ Windows 11 の Codex Desktop で `~/.codex/config.toml` の `profiles.local-llam
 llama.cpp `llama-server` が `http://127.0.0.1:8080/v1` で起動している前提で、プロキシを起動します。
 
 ```bash
-uv run proxy.py
+uv run codex-llamacpp-proxy
 ```
 
 別の llama.cpp URL を使う場合:
 
 ```bash
-uv run proxy.py --llama-base-url http://127.0.0.1:8080/v1
+uv run codex-llamacpp-proxy --llama-base-url http://127.0.0.1:8080/v1
 ```
 
 Codex の `~/.codex/config.toml` では、llama.cpp 直ではなくプロキシを `base_url` に指定します。
@@ -54,7 +54,7 @@ requires_openai_auth = false
 デバッグログを出したい場合:
 
 ```bash
-PROXY_DEBUG=1 uv run proxy.py
+PROXY_DEBUG=1 uv run codex-llamacpp-proxy
 ```
 
 ## 現状の制限
@@ -65,7 +65,7 @@ PROXY_DEBUG=1 uv run proxy.py
 
 ## 実装メモ
 
-検証中に、単純な形式変換だけでは Codex Desktop 側のターンが正常終了しないケースが複数見つかりました。`proxy.py` では次の互換処理も行っています。
+検証中に、単純な形式変換だけでは Codex Desktop 側のターンが正常終了しないケースが複数見つかりました。`src/codex_llamacpp_proxy/proxy.py` では次の互換処理も行っています。
 
 ### SSE の終了
 
